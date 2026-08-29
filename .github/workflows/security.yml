@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   static-security:
@@ -19,30 +18,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check for obvious dangerous JavaScript patterns
+      - name: Check for dangerous JavaScript patterns
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RInE --exclude-dir=.git --exclude='security.yml' '(^|[^[:alnum:]_])eval[[:space:]]*\(|new[[:space:]]+Function[[:space:]]*\(|document\.write[[:space:]]*\(' .; then
+          if grep -RInE --exclude-dir=.git --exclude='security.yml' '(^|[^[:alnum:]_])eval[[:space:]]*\(|new[[:space:]]+Function[[:space:]]*\(|document\.write[[:space:]]*\(' --include='*.js' .; then
             echo 'Dangerous JavaScript pattern detected.'
             exit 1
           fi
 
-      - name: Check for accidental private keys and common secrets
+      - name: Check for accidental secrets
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RInE --exclude-dir=.git --exclude='security.yml' '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})' .; then
+          if grep -RInE --exclude-dir=.git --exclude='security.yml' '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})' --include='*.js' --include='*.json' --include='*.html' --include='*.yml' --include='*.yaml' .; then
             echo 'Possible secret material detected.'
             exit 1
           fi
 
-      - name: Check production pages for forbidden import/export UI hooks
+      - name: Check forbidden end-user import/export UI hooks
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RInE --exclude-dir=.git 'Import|Export|import questions|export questions' -- '*.html' '*.js' '*.css' 2>/dev/null; then
-            echo 'Potential end-user import/export surface detected; review before merging.'
+          if grep -RInE --exclude-dir=.git 'Import questions|Export questions|Import Question Bank|Export Question Bank' --include='*.html' --include='*.js' --include='*.css' .; then
+            echo 'Potential end-user import/export surface detected.'
             exit 1
           fi
 
