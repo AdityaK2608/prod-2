@@ -1,0 +1,22 @@
+/* Production security smoke tests. Runs in Node 20+ without dependencies. */
+const fs=require('fs');
+const assert=require('assert');
+const read=p=>fs.readFileSync(p,'utf8');
+const files=['index.html','stable-fix.js','exam-lock.js','question-bank.js','security.js','styles.css'];
+for(const f of files) assert(fs.existsSync(f),`Missing required file: ${f}`);
+const html=read('index.html');
+const runtime=read('stable-fix.js');
+const lock=read('exam-lock.js');
+const security=read('security.js');
+assert(/Content-Security-Policy/i.test(html),'CSP policy missing');
+assert(/frame-ancestors\s+'none'/i.test(html),'frame-ancestors protection missing');
+assert(!/\beval\s*\(|new\s+Function\s*\(|document\.write\s*\(/.test(runtime),'Dangerous JS API found');
+assert(/localStorage/i.test(runtime),'Expected localStorage state handling missing');
+assert(/try\s*\{[\s\S]*localStorage/i.test(runtime),'Local storage error handling missing');
+assert(/user-select\s*:\s*none/i.test(lock),'Selection lock missing');
+assert(/copy|cut|paste/i.test(lock),'Clipboard restrictions missing');
+assert(/addEventListener/i.test(lock),'Exam event restrictions missing');
+assert(/error|unhandledrejection/i.test(security),'Global error handling missing');
+const combined=html+'\n'+runtime+'\n'+lock+'\n'+security;
+assert(!/Import questions|Export questions|import questions|export questions/i.test(combined),'End-user import/export surface found');
+console.log('PASS: production security smoke tests');
