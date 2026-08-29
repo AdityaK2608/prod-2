@@ -1,0 +1,55 @@
+name: Production Security Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  static-security:
+    name: Static security checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for obvious dangerous JavaScript patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE --exclude-dir=.git --exclude='security.yml' '(^|[^[:alnum:]_])eval[[:space:]]*\(|new[[:space:]]+Function[[:space:]]*\(|document\.write[[:space:]]*\(' .; then
+            echo 'Dangerous JavaScript pattern detected.'
+            exit 1
+          fi
+
+      - name: Check for accidental private keys and common secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE --exclude-dir=.git --exclude='security.yml' '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})' .; then
+            echo 'Possible secret material detected.'
+            exit 1
+          fi
+
+      - name: Check production pages for forbidden import/export UI hooks
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE --exclude-dir=.git 'Import|Export|import questions|export questions' -- '*.html' '*.js' '*.css' 2>/dev/null; then
+            echo 'Potential end-user import/export surface detected; review before merging.'
+            exit 1
+          fi
+
+      - name: Validate required production files
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in index.html stable-fix.js exam-lock.js question-bank.js security.js; do
+            test -f "$f" || { echo "Missing required file: $f"; exit 1; }
+          done
