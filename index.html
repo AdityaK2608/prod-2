@@ -36,4 +36,4 @@ async function runModule(kind){const q=document.getElementById(kind+'q')?.value.
 async function searchCve(){const q=document.getElementById('cveq')?.value.trim(),out=document.getElementById('results');if(!q)return;out.innerHTML='<div class="cve">Querying NVD…</div>';try{const r=await fetch('/api/cves?q='+encodeURIComponent(q)+'&resultsPerPage=6');const d=await r.json();if(!r.ok)throw Error(d.error||'API request failed');out.innerHTML=(d.vulnerabilities||[]).map(v=>{const c=v.cve||{},m=c.metrics?.cvssMetricV40?.[0]?.cvssData||c.metrics?.cvssMetricV31?.[0]?.cvssData;return `<div class="cve"><code>${esc(c.id||'Unknown CVE')}</code><b>${esc(((c.descriptions||[]).find(x=>x.lang==='en')||{}).value||'No description')}</b><small>CVSS ${esc(m?.baseScore??'N/A')} · ${esc(m?.baseSeverity||'N/A')} · Target impact: UNVERIFIED</small></div>`}).join('')||'<div class="cve">No verified records returned.</div>'}catch(e){out.innerHTML='<div class="cve error">Live NVD lookup unavailable: '+esc(e.message)+'</div>'}}
 addEventListener('hashchange',render);render();
 </script>
-</body></html>
+<script src="./static-modules.js"></script></body></html>
